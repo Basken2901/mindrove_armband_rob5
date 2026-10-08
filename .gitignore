@@ -1,0 +1,21 @@
+# ROS2 build artifacts
+build/
+log/
+install/
+
+# Colcon metadata
+.colcon/
+.colcon_install_layout
+
+# VSCode / JetBrains
+.vscode/
+.idea/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Temporary / backup files
+*.swp
+*.swo
+*~
