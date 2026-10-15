@@ -24,6 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'mindrove_node = data_recording.mindrove_node:main',
         ],
     },
 )
