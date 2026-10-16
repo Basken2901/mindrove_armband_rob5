@@ -37,10 +37,10 @@ cd mindrove_armband_rob5
 ```
 
 3. Run colcon with the virtual environment's Python, then source the workspace
-´´´
+```
 python "$(command -v colcon)" build
-´´´
-´´´
+```
+```
 source install/setup.bash
 ```
 
