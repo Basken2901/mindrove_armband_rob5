@@ -27,15 +27,18 @@ if ! python3 -m venv --help &> /dev/null; then
 fi
 
 # Create or update the virtual environment so it can use ROS's system packages.
-if [ ! -d "$VENV_DIR" ]; then
+# Create or update the virtual environment so it can use ROS's system packages.
+if [ ! -f "$VENV_DIR/bin/activate" ]; then
     echo ""
     echo "Creating virtual environment..."
+    rm -rf "$VENV_DIR"
+    python3 -m venv --system-site-packages "$VENV_DIR"
 else
     echo ""
     echo "Updating virtual environment..."
+    python3 -m venv --system-site-packages --upgrade "$VENV_DIR"
 fi
 
-python3 -m venv --system-site-packages --upgrade "$VENV_DIR"
 
 # Activate the virtual environment
 echo "Activating virtual environment..."
