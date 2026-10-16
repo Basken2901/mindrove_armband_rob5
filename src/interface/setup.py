@@ -24,6 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'emg_radar_ui = interface.emg_radar_ui:main',
         ],
     },
 )

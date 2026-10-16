@@ -51,6 +51,7 @@ echo ""
 echo "Installing MindRove SDK..."
 python -m pip install mindrove
 
+
 # Verify installation
 echo ""
 echo "Verifying installation..."
