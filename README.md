@@ -48,3 +48,10 @@ source install/setup.bash
 ```
 ros2 run data_recording mindrove_node
 ```
+
+While the node is running, press `r` in its terminal to record EMG data for
+20 seconds. Each completed recording is saved as a timestamped
+`emg_recording_*.csv` file in
+`src/data_classification/data/` (created if needed). The CSV contains one
+column per EMG channel. Pressing `r` during a recording does not start another
+one.
