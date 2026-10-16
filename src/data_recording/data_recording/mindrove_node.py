@@ -15,9 +15,8 @@ class MindRoveNode(Node):
     def __init__(self):
         super().__init__('mindrove_node')
 
-        # -------------------------
+
         # MindRove setup
-        # -------------------------
 
         self.board_id = BoardIds.MINDROVE_WIFI_BOARD
         self.params = MindRoveInputParams()
@@ -49,10 +48,6 @@ class MindRoveNode(Node):
         )
 
         self.get_logger().info(
-            f'EEG channels: {self.eeg_channels}'
-        )
-
-        self.get_logger().info(
             f'EMG channels: {self.emg_channels}'
         )
 
@@ -60,27 +55,16 @@ class MindRoveNode(Node):
             f'Sampling rate: {self.sampling_rate} Hz'
         )
 
-        # -------------------------
-        # ROS publishers
-        # -------------------------
 
-        self.eeg_publisher = self.create_publisher(
-            Float64MultiArray,
-            '/mindrove/eeg',
-            10
-        )
-
+        # ROS publisher
         self.emg_publisher = self.create_publisher(
             Float64MultiArray,
             '/mindrove/emg',
             10
         )
 
-        # -------------------------
         # Timer
-        # -------------------------
-
-        # Run at 100 Hz
+        # Runs at 100 Hz
         self.timer = self.create_timer(
             0.01,
             self.publish_data
@@ -98,25 +82,8 @@ class MindRoveNode(Node):
             min(count, 10)
         )
 
-        # -------------------------
-        # EEG
-        # -------------------------
 
-        if self.eeg_channels:
-
-            eeg_msg = Float64MultiArray()
-
-            for channel in self.eeg_channels:
-                eeg_msg.data.extend(
-                    data[channel, :].tolist()
-                )
-
-            self.eeg_publisher.publish(eeg_msg)
-
-        # -------------------------
         # EMG
-        # -------------------------
-
         if self.emg_channels:
 
             emg_msg = Float64MultiArray()

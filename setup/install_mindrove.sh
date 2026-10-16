@@ -26,15 +26,16 @@ if ! python3 -m venv --help &> /dev/null; then
     exit 1
 fi
 
-# Create the virtual environment if it doesn't exist
+# Create or update the virtual environment so it can use ROS's system packages.
 if [ ! -d "$VENV_DIR" ]; then
     echo ""
     echo "Creating virtual environment..."
-    python3 -m venv "$VENV_DIR"
 else
     echo ""
-    echo "Virtual environment already exists."
+    echo "Updating virtual environment..."
 fi
+
+python3 -m venv --system-site-packages --upgrade "$VENV_DIR"
 
 # Activate the virtual environment
 echo "Activating virtual environment..."
