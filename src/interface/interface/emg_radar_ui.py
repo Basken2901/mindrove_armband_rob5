@@ -15,13 +15,13 @@ class EMGRadarUI(Node):
     def __init__(self):
         super().__init__('emg_radar_ui')
 
-        # Number of EMG channels in the incoming message
+        # Number of EMG channels
         self.num_channels = 8
 
-        # Latest magnitude for each channel
+        # Latest activity magnitude for each channel
         self.emg_values = [0.0] * self.num_channels
 
-        # Track whether we have received any data
+        # Track whether data has been received
         self.received_data = False
 
         # Subscribe to the EMG topic
@@ -32,7 +32,7 @@ class EMGRadarUI(Node):
             10
         )
 
-        # Set up the radar chart
+        # Set up radar angles
         self.angles = [
             i * 2 * math.pi / self.num_channels
             for i in range(self.num_channels)
@@ -44,16 +44,15 @@ class EMGRadarUI(Node):
         plt.ion()
 
         self.fig, self.ax = plt.subplots(
-            figsize=(7, 7),
-            subplot_kw={'polar': True}
+        figsize=(7, 7)
         )
 
-        # Give the window a title
+        self.ax.set_aspect('equal')
+
         self.fig.canvas.manager.set_window_title(
             'MindRove EMG Radar'
         )
 
-        # Show the window without blocking normal desktop interaction
         plt.show(block=False)
 
         self.ax.set_xticks(self.angles[:-1])
@@ -62,17 +61,76 @@ class EMGRadarUI(Node):
             for i in range(self.num_channels)
         ])
 
+        # Set up the octagonal radar chart
         self.ax.set_title(
-            'MindRove EMG - Absolute Magnitude',
-            pad=25
+            'MindRove EMG - Baseline-Corrected Activity',
+            pad=20
         )
 
-        self.ax.set_ylim(0, 25000)
-        self.ax.grid(True)
+        # Eight equally spaced channel positions
+        angles = np.linspace(
+            0,
+            2 * math.pi,
+            self.num_channels,
+            endpoint=False
+        )
 
-        # Initialize the radar polygon
+        # Start at the top and proceed clockwise
+        angles = math.pi / 2 - angles
+
+        # Octagon vertices
+        self.angles = angles.tolist()
+        self.angles += self.angles[:1]
+
+        # Label each channel
+        self.ax.set_xticks([])
+        self.ax.set_yticks([])
+
+        for i, angle in enumerate(angles):
+            self.ax.text(
+                1.12 * math.cos(angle),
+                1.12 * math.sin(angle),
+                f'Channel {i + 1}',
+                ha='center',
+                va='center'
+            )
+
+        # Draw the octagonal grid
+        for radius in [0.25, 0.5, 0.75, 1.0]:
+            grid_x = radius * np.cos(self.angles)
+            grid_y = radius * np.sin(self.angles)
+
+            self.ax.plot(
+                grid_x,
+                grid_y,
+                linestyle='--',
+                linewidth=0.8,
+                alpha=0.5
+            )
+
+        # Draw the outer octagon
+        self.ax.plot(
+            np.cos(self.angles),
+            np.sin(self.angles),
+            linewidth=1.2
+        )
+
+        # Draw lines from the center to each channel
+        for angle in angles:
+            self.ax.plot(
+                [0, math.cos(angle)],
+                [0, math.sin(angle)],
+                linewidth=0.8,
+                alpha=0.5
+            )
+
+        self.ax.set_xlim(-1.3, 1.3)
+        self.ax.set_ylim(-1.3, 1.3)
+        self.ax.axis('off')
+
+        # Initialize radar polygon
         self.line, = self.ax.plot(
-            self.angles,
+            [0.0] * (self.num_channels + 1),
             [0.0] * (self.num_channels + 1),
             linewidth=2
         )
@@ -85,36 +143,37 @@ class EMGRadarUI(Node):
 
     def emg_callback(self, msg):
 
-        data = list(msg.data)
+        data = np.asarray(msg.data, dtype=np.float64)
 
-        # Expect 8 channels with an equal number of samples per channel.
+        # Validate the message
         if len(data) == 0 or len(data) % self.num_channels != 0:
             self.get_logger().warning(
                 f'Unexpected EMG message length: {len(data)}'
             )
             return
 
+        # Determine the number of samples per channel
         samples_per_channel = len(data) // self.num_channels
 
-        magnitudes = []
+        # The publisher sends each channel's samples consecutively.
+        channels = data.reshape(
+            self.num_channels,
+            samples_per_channel
+        )
 
-        for channel in range(self.num_channels):
+        # Remove the mean baseline independently for each channel.
+        centered_channels = (
+            channels
+            - np.mean(channels, axis=1, keepdims=True)
+        )
 
-            start = channel * samples_per_channel
-            end = start + samples_per_channel
+        # Calculate average absolute activity after centering.
+        magnitudes = np.mean(
+            np.abs(centered_channels),
+            axis=1
+        )
 
-            channel_samples = data[start:end]
-
-            # Take the absolute value of every sample,
-            # then calculate the average magnitude.
-            magnitude = sum(
-                abs(float(value))
-                for value in channel_samples
-            ) / samples_per_channel
-
-            magnitudes.append(magnitude)
-
-        self.emg_values = magnitudes
+        self.emg_values = magnitudes.tolist()
         self.received_data = True
 
     def update_plot(self):
@@ -122,11 +181,32 @@ class EMGRadarUI(Node):
         if not self.received_data:
             return
 
-        # Repeat the first value to close the radar polygon.
-        values = self.emg_values + self.emg_values[:1]
+        # Normalize activity to fit inside the octagon.
+        maximum = max(self.emg_values)
 
-        # Update the radar line.
-        self.line.set_data(self.angles, values)
+        if maximum > 0:
+            normalized = [
+                value / maximum
+                for value in self.emg_values
+            ]
+        else:
+            normalized = [0.0] * self.num_channels
+
+        # Close the polygon.
+        values = normalized + normalized[:1]
+
+        # Convert radial values to Cartesian coordinates.
+        x = [
+            radius * math.cos(angle)
+            for radius, angle in zip(values, self.angles)
+        ]
+
+        y = [
+            radius * math.sin(angle)
+            for radius, angle in zip(values, self.angles)
+        ]
+
+        self.line.set_data(x, y)
 
         # Remove the previous filled area.
         if self.fill is not None:
@@ -134,16 +214,10 @@ class EMGRadarUI(Node):
 
         # Fill the current polygon.
         self.fill = self.ax.fill(
-            self.angles,
-            values,
+            x,
+            y,
             alpha=0.25
         )[0]
-
-        # Adjust the radial scale if necessary.
-        maximum = max(self.emg_values)
-
-        if maximum > 0:
-            self.ax.set_ylim(0, max(25000, maximum * 1.1))
 
         self.fig.canvas.draw_idle()
         self.fig.canvas.flush_events()
@@ -156,7 +230,6 @@ def main(args=None):
     node = EMGRadarUI()
 
     try:
-        # Process ROS messages while keeping the GUI responsive.
         while rclpy.ok() and plt.fignum_exists(node.fig.number):
             rclpy.spin_once(node, timeout_sec=0.01)
             node.update_plot()

@@ -20,5 +20,6 @@
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>python3-matplotlib</exec_depend>
   <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-math</exec_depend>
 
 </package>
